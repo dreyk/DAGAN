@@ -5,7 +5,7 @@ from dagan_architectures import UResNetGenerator, Discriminator
 class DAGAN:
     def __init__(self, input_x_i, input_x_j, dropout_rate, generator_layer_sizes,
                  discriminator_layer_sizes, generator_layer_padding, z_inputs, batch_size=100, z_dim=100,
-                 num_channels=1, is_training=True, augment=True, discr_inner_conv=0, gen_inner_conv=0, num_gpus=1, 
+                 num_channels=1, is_training=True, augment=True, discr_inner_conv=0, gen_inner_conv=0,
                  use_wide_connections=False):
 
         """
@@ -25,12 +25,10 @@ class DAGAN:
         :param augment: A boolean placeholder that determines whether to augment the data using rotations
         :param discr_inner_conv: Number of inner layers per multi layer in the discriminator
         :param gen_inner_conv: Number of inner layers per multi layer in the generator
-        :param num_gpus: Number of GPUs to use for training
         """
         self.batch_size = batch_size
         self.z_dim = z_dim
         self.z_inputs = z_inputs
-        self.num_gpus = num_gpus
 
         self.g = UResNetGenerator(batch_size=self.batch_size, layer_sizes=generator_layer_sizes,
                                   num_channels=num_channels, layer_padding=generator_layer_padding,
@@ -140,16 +138,16 @@ class DAGAN:
             activations_features = tf.expand_dims(activations_features, axis=3)
             tf.summary.image('{}_{}'.format(name, i), activations_features)
 
-    def loss(self, gpu_id):
+    def loss(self):
 
         """
         Builds models, calculates losses, saves tensorboard information.
         :param gpu_id: The GPU ID to calculate losses for.
         :return: Returns the generator and discriminator losses.
         """
-        with tf.name_scope("losses_{}".format(gpu_id)):
+        with tf.name_scope("losses"):
 
-            input_a, input_b = self.data_augment_batch(self.input_x_i[gpu_id], self.input_x_j[gpu_id])
+            input_a, input_b = self.data_augment_batch(self.input_x_i, self.input_x_j)
             x_g = self.generate(input_a)
 
             g_same_class_outputs, g_discr_features = self.d(x_g, input_a, training=self.training_phase,
@@ -228,32 +226,16 @@ class DAGAN:
         :param beta2: Beta2 for the Adam optimizer
         :return: summary op, losses and training ops.
         """
-
-        losses = dict()
         opts = dict()
-
-        if self.num_gpus > 0:
-            device_ids = ['/gpu:{}'.format(i) for i in range(self.num_gpus)]
-        else:
-            device_ids = ['/cpu:0']
-        for gpu_id, device_id in enumerate(device_ids):
-            with tf.device(device_id):
-                total_losses = self.loss(gpu_id=gpu_id)
-                for key, value in total_losses.items():
-                    if key not in losses.keys():
-                        losses[key] = [value]
-                    else:
-                        losses[key].append(value)
-
+        losses = self.loss()
         for key in list(losses.keys()):
-            losses[key] = tf.reduce_mean(losses[key], axis=0)
             opts[key.replace("losses", "opt")] = tf.train.AdamOptimizer(beta1=beta1, beta2=beta2,
-                                                                            learning_rate=learning_rate)
+                                                                            learning_rate=learning_rate).apply_gradients()
 
-        summary = tf.summary.merge_all()
+
         apply_grads_ops = self.train(opts=opts, losses=losses)
 
-        return summary, losses, apply_grads_ops
+        return losses, apply_grads_ops
 
     def sample_same_images(self):
         """
