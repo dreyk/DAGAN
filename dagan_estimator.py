@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import pandas as pd
 import PIL.Image
+import os
 
 IMAGE_SIZE = (64, 64)
 
@@ -60,10 +61,10 @@ def input_fn(params, is_training):
                 b_batch = []
                 for i in len(params['batch_size']):
                     samples = np.random.choice(class_files[sc[i]], 2)
-                    im = PIL.Image.open(samples[0])
+                    im = PIL.Image.open(os.path.join(params['data_set'],samples[0]))
                     im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
                     a = np.asarray(im)
-                    im = PIL.Image.open(samples[1])
+                    im = PIL.Image.open(os.path.join(params['data_set'],samples[1]))
                     im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
                     b = np.asarray(im)
                     a_batch.append(a)

@@ -132,6 +132,11 @@ def parse_args():
         default=None,
         help='Location of training files or evaluation files',
     )
+    parser.add_argument(
+        '--attr_definition_file',
+        default=None,
+        help='attr_definition_file',
+    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)
@@ -228,6 +233,7 @@ def main():
         'random_rotate': args.random_rotate,
         'use_wide_connections': args.use_wide_connections,
         'limit_train': args.limit_train,
+        'attr_definition_file': args.attr_definition_file,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):
