@@ -51,32 +51,33 @@ def input_fn(params, is_training):
             continue
         v = files.loc[files[c] == 1]['image_id'].values
         class_files.append(v)
-    z = np.zeros((params['batch_size'],params['z_dim']), dtype=np.float32)
-    limit = limit*params['epoch']//params['batch_size']+1
+    z = np.zeros((params['batch_size'], params['z_dim']), dtype=np.float32)
+    limit = limit * params['epoch'] // params['batch_size'] + 1
+
     def _input_fn():
         def _gen():
             for _ in range(limit):
-                sc = np.random.choice(len(class_files),params['batch_size'])
+                sc = np.random.choice(len(class_files), params['batch_size'])
                 a_batch = []
                 b_batch = []
                 for i in len(params['batch_size']):
                     samples = np.random.choice(class_files[sc[i]], 2)
-                    im = PIL.Image.open(os.path.join(params['data_set'],samples[0]))
-                    im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
+                    im = PIL.Image.open(os.path.join(params['data_set'], samples[0]))
+                    im = im.resize(IMAGE_SIZE)
                     a = np.asarray(im)
-                    im = PIL.Image.open(os.path.join(params['data_set'],samples[1]))
-                    im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
+                    im = PIL.Image.open(os.path.join(params['data_set'], samples[1]))
+                    im = im.resize(IMAGE_SIZE)
                     b = np.asarray(im)
                     a_batch.append(a)
                     b_batch.append(b)
-                a_batch = np.stack(a_batch)/127.5-1
-                b_batch = np.stack(b_batch)/127.5-1
+                a_batch = np.stack(a_batch) / 127.5 - 1
+                b_batch = np.stack(b_batch) / 127.5 - 1
             yield ({'i': a_batch, 'j': b_batch, 'z': z}, 0)
 
-        cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], IMAGE_SIZE[2]])
+        cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
         ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
-        {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
-        tf.TensorShape([None])))
+            {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
+            tf.TensorShape([None])))
         return ds
 
     return _input_fn
