@@ -182,7 +182,7 @@ def train(mode, checkpoint_dir, params):
     )
     logging.info("Start %s mode", mode)
     if mode == 'train':
-        _, input_fn = gan.input_fn(params, True)
+        input_fn = gan.input_fn(params, True)
         net.train(input_fn=input_fn)
     else:
         logging.info("Not implemented")

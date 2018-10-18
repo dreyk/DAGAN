@@ -6,8 +6,11 @@ from tensorflow.python.training.session_run_hook import SessionRunArgs
 import glob
 import logging
 import numpy as np
+import pandas as pd
+import PIL.Image
 
 IMAGE_SIZE = (64, 64)
+
 
 def null_dataset():
     def _input_fn():
@@ -23,9 +26,9 @@ def eval_fn():
         ds = tf.data.Dataset.from_tensor_slices(inputs)
 
         def _fake_image(_):
-            z_vectors = np.random.normal(size=(1,1))
+            z_vectors = np.random.normal(size=(1, 1))
             z = tf.zeros([1, 1, 1, 3], dtype=tf.float32)
-            return {'i': z,'j':z,'z':z_vectors}, 0
+            return {'i': z, 'j': z, 'z': z_vectors}, 0
 
         ds = ds.map(_fake_image, num_parallel_calls=1)
         return ds
@@ -38,44 +41,44 @@ def input_fn(params, is_training):
     if limit is None:
         limit = -1
 
-    inputs = []
-    i = 0
-    for f in glob.iglob(params['data_set'], recursive=True):
-        inputs.append(f)
-        i += 1
-        if (limit > 0) and (i >= limit):
-            break
-    logging.info('Training files count: {}'.format(len(inputs)))
-
+    files = pd.read_csv(params['attr_definition_file'])
+    if limit < 1:
+        limit = len(files)
+    class_files = []
+    for c in files.columns.values:
+        if c == 'image_id':
+            continue
+        v = files.loc[files[c] == 1]['image_id'].values
+        class_files.append(v)
+    z = np.zeros((params['batch_size'],params['z_dim']), dtype=np.float32)
+    limit = limit*params['epoch']//params['batch_size']+1
     def _input_fn():
-        ds = tf.data.Dataset.from_tensor_slices(inputs)
-        if is_training:
-            ds = ds.repeat(count=params['epoch']).shuffle(params['batch_size'] * 10)
+        def _gen():
+            for _ in range(limit):
+                sc = np.random.choice(len(class_files),params['batch_size'])
+                a_batch = []
+                b_batch = []
+                for i in len(params['batch_size']):
+                    samples = np.random.choice(class_files[sc[i]], 2)
+                    im = PIL.Image.open(samples[0])
+                    im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
+                    a = np.asarray(im)
+                    im = PIL.Image.open(samples[1])
+                    im = im.resize((IMAGE_SIZE[0], IMAGE_SIZE[1]))
+                    b = np.asarray(im)
+                    a_batch.append(a)
+                    b_batch.append(b)
+                a_batch = np.stack(a_batch)/127.5-1
+                b_batch = np.stack(b_batch)/127.5-1
+            yield ({'i': a_batch, 'j': b_batch, 'z': z}, 0)
 
-        def _read_image(filename):
-            image = tf.image.decode_jpeg(tf.read_file(filename), 3)
-            image = tf.image.resize_images(image, IMAGE_SIZE)
-            image = image / 255.0 - 1
-            return image
-
-        def _pair(i,j):
-            z_vectors = np.random.normal(size=(params['batch_size'], params['z_dim']))
-            return {'i':i,'j':j,'z':z_vectors},0
-
-        ds = ds.map(_read_image)
-
-        ds1 = ds.repeat(count=params['epoch']).shuffle(params['batch_size'] * 10)
-        ds2 = ds.repeat(count=params['epoch']).shuffle(params['batch_size'] * 10)
-        ds = ds.zip((ds1,ds2)).map(_pair)
-
-        if is_training:
-            ds = ds.apply(tf.contrib.data.batch_and_drop_remainder(params['batch_size']))
-        else:
-            ds = ds.padded_batch(params['batch_size'], padded_shapes=(
-                {'i': [IMAGE_SIZE[0], IMAGE_SIZE[1], 3],'j': [IMAGE_SIZE[0], IMAGE_SIZE[1], 3]}, tf.TensorShape([])))
+        cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], IMAGE_SIZE[2]])
+        ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
+        {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
+        tf.TensorShape([None])))
         return ds
 
-    return inputs, _input_fn
+    return _input_fn
 
 
 def _encoder_model_fn(features, labels, mode, params=None, config=None):
@@ -91,7 +94,8 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
     dagan = DAGAN(batch_size=params['batch_size'], input_x_i=features['i'], input_x_j=features['j'],
                   dropout_rate=params['dropout_rate'], generator_layer_sizes=generator_layers,
                   generator_layer_padding=generator_layer_padding, num_channels=features['i'].shape[3],
-                  is_training=(mode == tf.estimator.ModeKeys.TRAIN), augment=tf.constant(params['random_rotate'],dtype=tf.bool),
+                  is_training=(mode == tf.estimator.ModeKeys.TRAIN),
+                  augment=tf.constant(params['random_rotate'], dtype=tf.bool),
                   discriminator_layer_sizes=discriminator_layers,
                   discr_inner_conv=discr_inner_layers,
                   gen_inner_conv=gen_inner_layers, z_dim=params['z_dim'], z_inputs=features['z'],
