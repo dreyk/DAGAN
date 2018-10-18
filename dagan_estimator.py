@@ -77,7 +77,7 @@ def input_fn(params, is_training):
         cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
         ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
             {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
-            tf.TensorShape([None])))
+            tf.TensorShape([])))
         return ds
 
     return _input_fn
