@@ -58,9 +58,9 @@ def input_fn(params, is_training):
             image = image / 255.0 - 1
             return image
 
-        def _pair(x):
+        def _pair(i,j):
             z_vectors = np.random.normal(size=(params['batch_size'], params['z_dim']))
-            return {'i':x[0],'j':x[1],'z':z_vectors},0
+            return {'i':i,'j':j,'z':z_vectors},0
 
         ds = ds.map(_read_image)
 
