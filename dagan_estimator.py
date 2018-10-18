@@ -79,6 +79,7 @@ def input_fn(params, is_training):
         ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
             {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
             tf.TensorShape([params['batch_size']])))
+        ds = ds.prefetch(4)
         return ds
 
     return _input_fn
