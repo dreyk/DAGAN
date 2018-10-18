@@ -6,10 +6,8 @@ import configparser
 import json
 import numpy as np
 import sys
-from mlboardclient.api import client
 import dagan_estimator as gan
 
-mlboard = client.Client()
 
 
 def parse_args():
@@ -70,7 +68,7 @@ def parse_args():
     parser.add_argument(
         '--z_dim',
         type=int,
-        default=1,
+        default=100,
         help='z_dim',
     )
     parser.add_argument(
