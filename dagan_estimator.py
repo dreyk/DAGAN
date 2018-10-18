@@ -91,7 +91,7 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
     dagan = DAGAN(batch_size=params['batch_size'], input_x_i=features['i'], input_x_j=features['j'],
                   dropout_rate=params['dropout_rate'], generator_layer_sizes=generator_layers,
                   generator_layer_padding=generator_layer_padding, num_channels=features['i'].shape[3],
-                  is_training=(mode == tf.estimator.ModeKeys.TRAIN), augment=params['random_rotate'],
+                  is_training=(mode == tf.estimator.ModeKeys.TRAIN), augment=tf.constant(params['random_rotate'],dtype=tf.bool),
                   discriminator_layer_sizes=discriminator_layers,
                   discr_inner_conv=discr_inner_layers,
                   gen_inner_conv=gen_inner_layers, z_dim=params['z_dim'], z_inputs=features['z'],
