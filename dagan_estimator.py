@@ -52,6 +52,7 @@ def input_fn(params, is_training):
         v = files.loc[files[c] == 1]['image_id'].values
         class_files.append(v)
     z = np.zeros((params['batch_size'], params['z_dim']), dtype=np.float32)
+    l0 = np.zeros((params['batch_size']), dtype=np.int32)
     limit = limit * params['epoch'] // params['batch_size'] + 1
 
     def _input_fn():
@@ -72,12 +73,12 @@ def input_fn(params, is_training):
                     b_batch.append(b)
                 a_batch = np.stack(a_batch) / 127.5 - 1
                 b_batch = np.stack(b_batch) / 127.5 - 1
-            yield ({'i': a_batch, 'j': b_batch, 'z': z}, 0)
+            yield ({'i': a_batch, 'j': b_batch, 'z': z}, l0)
 
         cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
         ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
             {'i': cshape, 'j': cshape, 'z': tf.TensorShape([params['batch_size'], params['z_dim']])},
-            tf.TensorShape([])))
+            tf.TensorShape([params['batch_size']])))
         return ds
 
     return _input_fn
