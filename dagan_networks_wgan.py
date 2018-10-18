@@ -230,7 +230,7 @@ class DAGAN:
         losses = self.loss()
         for key in list(losses.keys()):
             opts[key.replace("losses", "opt")] = tf.train.AdamOptimizer(beta1=beta1, beta2=beta2,
-                                                                            learning_rate=learning_rate).apply_gradients()
+                                                                            learning_rate=learning_rate)
 
 
         apply_grads_ops = self.train(opts=opts, losses=losses)
