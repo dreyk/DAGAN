@@ -138,10 +138,8 @@ class MultiStepOps(session_run_hook.SessionRunHook):
 
     def before_run(self, run_context):  # pylint: disable=unused-argument
         for n in range(self._d_steps):
-            logging.info('Discriminator step: {}'.format(n))
             run_context.session.run([self._d_train])
         for n in range(self._g_steps):
-            logging.info('Generator step: {}'.format(n))
             run_context.session.run([self._g_train])
         return None
 
