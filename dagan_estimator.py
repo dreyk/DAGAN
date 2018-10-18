@@ -54,7 +54,7 @@ def input_fn(params, is_training):
     z = np.zeros((params['batch_size'], params['z_dim']), dtype=np.float32)
     l0 = np.zeros((params['batch_size']), dtype=np.int32)
     limit = limit * params['epoch'] // params['batch_size'] + 1
-
+    logging.info('Steps number: {}'.format(limit))
     def _input_fn():
         def _gen():
             for _ in range(limit):
