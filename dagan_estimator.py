@@ -73,7 +73,7 @@ def input_fn(params, is_training):
                     b_batch.append(b)
                 a_batch = np.stack(a_batch) / 127.5 - 1
                 b_batch = np.stack(b_batch) / 127.5 - 1
-            yield ({'i': a_batch, 'j': b_batch, 'z': z}, l0)
+                yield ({'i': a_batch, 'j': b_batch, 'z': z}, l0)
 
         cshape = tf.TensorShape([params['batch_size'], IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
         ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
