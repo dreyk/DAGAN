@@ -42,15 +42,16 @@ def input_fn(params, is_training):
     if limit is None:
         limit = -1
 
-    files = pd.read_csv(params['attr_definition_file'])
-    if limit < 1:
-        limit = len(files)
     class_files = []
-    for c in files.columns.values:
-        if c == 'image_id':
-            continue
-        v = files.loc[files[c] == 1]['image_id'].values
-        class_files.append(v)
+    all_files = 0
+    for i in glob.glob(params['data_set']+'/*'):
+        files = glob.glob(i+'/*.jpg')
+        class_files.append(files)
+        all_files = len(files)
+
+    if limit < 1:
+        limit = all_files
+
     z = np.zeros((params['batch_size'], params['z_dim']), dtype=np.float32)
     l0 = np.zeros((params['batch_size']), dtype=np.int32)
     limit = limit * params['epoch'] // params['batch_size'] + 1
@@ -63,10 +64,10 @@ def input_fn(params, is_training):
                 b_batch = []
                 for i in range(params['batch_size']):
                     samples = np.random.choice(class_files[sc[i]], 2)
-                    im = PIL.Image.open(os.path.join(params['data_set'], samples[0]))
+                    im = PIL.Image.open(samples[0])
                     im = im.resize(IMAGE_SIZE)
                     a = np.asarray(im)
-                    im = PIL.Image.open(os.path.join(params['data_set'], samples[1]))
+                    im = PIL.Image.open(samples[1])
                     im = im.resize(IMAGE_SIZE)
                     b = np.asarray(im)
                     a_batch.append(a)
