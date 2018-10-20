@@ -34,7 +34,6 @@ import sys
 import os
 import cv2
 import argparse
-import facenet
 
 
 # File format: text files, each line is an image record containing 6 columns, delimited by TAB.
@@ -53,7 +52,7 @@ def main(args):
 
     # Store some git revision info in a text file in the output directory
     src_path,_ = os.path.split(os.path.realpath(__file__))
-    facenet.store_revision_info(src_path, output_dir, ' '.join(sys.argv))
+
 
     i = 0
     for f in args.tsv_files:
