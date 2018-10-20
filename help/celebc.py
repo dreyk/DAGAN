@@ -64,6 +64,7 @@ def main(args):
             img_dec_string = base64.b64decode(img_string)
             img_data = np.fromstring(img_dec_string, dtype=np.uint8)
             img = cv2.imdecode(img_data, cv2.IMREAD_COLOR) #pylint: disable=maybe-no-member
+            print(img.shape)
             if args.size:
                 img = misc.imresize(img, (args.size, args.size), interp='bilinear')
             full_class_dir = os.path.join(output_dir, class_dir)
