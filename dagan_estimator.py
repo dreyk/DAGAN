@@ -47,7 +47,7 @@ def input_fn(params, is_training):
     for i in glob.glob(params['data_set']+'/*'):
         files = glob.glob(i+'/*.jpg')
         class_files.append(files)
-        all_files = len(files)
+        all_files += len(files)
 
     if limit < 1:
         limit = all_files
