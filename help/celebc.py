@@ -62,7 +62,7 @@ def main(args):
             fields = line.split('\t')
             class_dir = fields[0]
             if prev_dir!=class_dir:
-                prev_dir ==  class_dir
+                prev_dir =  class_dir
                 classes+=1
             if args.num_classes:
                 if classes>=args.num_classes:
