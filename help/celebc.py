@@ -55,10 +55,18 @@ def main(args):
 
 
     i = 0
+    classes = 0
+    prev_dir = ''
     for f in args.tsv_files:
         for line in f:
             fields = line.split('\t')
             class_dir = fields[0]
+            if prev_dir!=class_dir:
+                prev_dir ==  class_dir
+                classes+=1
+            if args.num_classes:
+                if classes>=args.num_classes:
+                    break
             img_name = fields[1] + '-' + fields[4].replace('FaceId-','') + '.' + args.output_format
             img_string = fields[6]
             img_dec_string = base64.b64decode(img_string)
@@ -80,6 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('output_dir', type=str, help='Output base directory for the image dataset')
     parser.add_argument('tsv_files', type=argparse.FileType('r'), nargs='+', help='Input TSV file name(s)')
     parser.add_argument('--size', type=int, help='Images are resized to the given size')
+    parser.add_argument('--num_classes', type=int, help='Number of classes')
     parser.add_argument('--output_format', type=str, help='Format of the output images', default='png', choices=['png', 'jpg'])
 
     main(parser.parse_args())
