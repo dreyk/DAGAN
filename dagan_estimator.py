@@ -46,6 +46,7 @@ def test_fn(params):
                                                       spherical=True, gaussian=True)
     im = params['test_image']
     im = PIL.Image.open(im)
+    im = np.asarray(im)
     im = im.resize(IMAGE_SIZE)
     im = im / 127.5 - 1
     im = np.reshape(im, (1, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
