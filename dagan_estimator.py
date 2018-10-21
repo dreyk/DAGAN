@@ -56,7 +56,7 @@ def test_fn(params):
     def _input_fn():
         def _gen():
             for i in range(0, num_generations * num_generations, batch):
-                z_vector = z_vectors[i * batch:i * batch + batch]
+                z_vector = z_vectors[i:i + batch]
                 if len(z_vector) < batch:
                     z_vector = np.pad(z_vector, ((0, batch - len(z_vector)), (0, 0)), 'constant')
                 yield ({'i': im, 'j': im, 'z': z_vector}, l0)
