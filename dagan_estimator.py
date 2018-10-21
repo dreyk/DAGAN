@@ -141,6 +141,7 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
                   use_wide_connections=params['use_wide_connections'])
 
     if (mode == tf.estimator.ModeKeys.TRAIN):
+        generated = None
         losses, graph_ops = dagan.init_train()
         accumulated_d_loss = tf.Variable(0.0, trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
         acc_d_loss_op = accumulated_d_loss.assign_add(losses["d_losses"])
