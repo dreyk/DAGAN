@@ -200,11 +200,11 @@ def test(checkpoint_dir, params):
     for p in predictions:
         p = (p + 1) / 2 * 255
         p = np.uint8(np.clip(p,0,255))
-        h = h.append(p)
+        h.append(p)
         if len(h) == num_generations:
             images.append(tf.concat(h, axis=1))
             h = []
-        if len(images==num_generations):
+        if len(images) == num_generations:
             break
     images = tf.concat(images, axis=0)
     im = PIL.Image.fromarray(images)
