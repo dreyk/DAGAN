@@ -202,11 +202,11 @@ def test(checkpoint_dir, params):
         p = np.uint8(np.clip(p,0,255))
         h.append(p)
         if len(h) == num_generations:
-            images.append(tf.concat(h, axis=1))
+            images.append(np.concatenate(h, axis=1))
             h = []
         if len(images) == num_generations:
             break
-    images = tf.concat(images, axis=0)
+    images = np.concatenate(images, axis=0)
     im = PIL.Image.fromarray(images)
     im.save(checkpoint_dir+'/result.png')
     with io.BytesIO() as output:
