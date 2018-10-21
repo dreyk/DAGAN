@@ -242,9 +242,9 @@ class DAGAN:
         Samples images from the DAGAN using input_x_i as image conditional input and z_inputs as the gaussian noise.
         :return: Inputs and generated images
         """
-        conditional_inputs = self.input_x_i[0]
+        conditional_inputs = self.input_x_i
         generated = self.generate(conditional_inputs,
            z_input=self.z_inputs)
 
-        return self.input_x_i[0], generated
+        return self.input_x_i, generated
 

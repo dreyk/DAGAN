@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import PIL.Image
 import os
+import utils.interpolations
 
 IMAGE_SIZE = (64, 64)
 
@@ -37,6 +38,37 @@ def eval_fn():
     return _input_fn
 
 
+def test_fn(params):
+    num_generations = params['num_generations']
+    batch = params['batch_size']
+    z_vectors = utils.interpolations.create_mine_grid(rows=num_generations, cols=num_generations,
+                                                      dim=params['z_dim'], space=3, anchors=None,
+                                                      spherical=True, gaussian=True)
+    im = params['test_image']
+    im = PIL.Image.open(im)
+    im = im.resize(IMAGE_SIZE)
+    im = im / 127.5 - 1
+    im = np.reshape(im, (1, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+    im = np.repeat(im, batch, axis=0)
+    l0 = np.zeros((params['batch_size']), dtype=np.int32)
+
+    def _input_fn():
+        def _gen():
+            for i in range(0, num_generations * num_generations, batch):
+                z_vector = z_vectors[i * batch:i * batch + batch]
+                if len(z_vector) < batch:
+                    z_vector = np.pad(z_vector, ((0, batch - len(z_vector)), (0, 0)), 'constant')
+                yield ({'i': im, 'j': im, 'z': z_vector}, l0)
+
+        cshape = tf.TensorShape([batch, IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
+        ds = tf.data.Dataset.from_generator(_gen, ({'i': tf.float32, 'j': tf.float32, 'z': tf.float32}, tf.int32), (
+            {'i': cshape, 'j': cshape, 'z': tf.TensorShape([batch, params['z_dim']])},
+            tf.TensorShape([batch])))
+        return ds
+
+    return _input_fn
+
+
 def input_fn(params, is_training):
     limit = params['limit_train']
     if limit is None:
@@ -44,8 +76,8 @@ def input_fn(params, is_training):
 
     class_files = []
     all_files = 0
-    for i in glob.glob(params['data_set']+'/*'):
-        files = glob.glob(i+'/*.jpg')
+    for i in glob.glob(params['data_set'] + '/*'):
+        files = glob.glob(i + '/*.jpg')
         class_files.append(files)
         all_files += len(files)
 
@@ -56,6 +88,7 @@ def input_fn(params, is_training):
     l0 = np.zeros((params['batch_size']), dtype=np.int32)
     limit = limit * params['epoch'] // params['batch_size'] + 1
     logging.info('Steps number: {}'.format(limit))
+
     def _input_fn():
         def _gen():
             for _ in range(limit):
@@ -106,8 +139,8 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
                   gen_inner_conv=gen_inner_layers, z_dim=params['z_dim'], z_inputs=features['z'],
                   use_wide_connections=params['use_wide_connections'])
 
-    losses, graph_ops = dagan.init_train()
     if (mode == tf.estimator.ModeKeys.TRAIN):
+        losses, graph_ops = dagan.init_train()
         accumulated_d_loss = tf.Variable(0.0, trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
         acc_d_loss_op = accumulated_d_loss.assign_add(losses["d_losses"])
         acc_d_loss_zero_op = accumulated_d_loss.assign(tf.zeros_like(accumulated_d_loss))
@@ -122,6 +155,7 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
         total_loss = accumulated_d_loss + accumulated_g_loss
         train_op = training_util._increment_global_step(1)  # pylint: disable=protected-access
     else:
+        _, generated = dagan.sample_same_images()
         total_loss = None
         train_op = None
         train_hooks = None
@@ -129,6 +163,7 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
     return tf.estimator.EstimatorSpec(
         mode=mode,
         loss=total_loss,
+        predictions=generated,
         training_hooks=train_hooks,
         train_op=train_op)
 

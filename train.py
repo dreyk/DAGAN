@@ -7,8 +7,13 @@ import json
 import numpy as np
 import sys
 import dagan_estimator as gan
+import PIL.Image
+import io
+import base64
+from mlboardclient.api import client
 
 
+mlboard = client.Client()
 
 def parse_args():
     conf_parser = argparse.ArgumentParser(
@@ -70,6 +75,18 @@ def parse_args():
         type=int,
         default=100,
         help='z_dim',
+    )
+    parser.add_argument(
+        '--num_generations',
+        type=int,
+        default=64,
+        help='num_generations',
+    )
+    parser.add_argument(
+        '--test_image',
+        type=str,
+        default=None,
+        help='test_image',
     )
     parser.add_argument(
         '--dropout_rate',
@@ -160,6 +177,44 @@ def parse_args():
     return checkpoint_dir, args
 
 
+def test(checkpoint_dir, params):
+    logging.info("start test  model")
+
+    session_config = None
+
+    conf = tf.estimator.RunConfig(
+        model_dir=checkpoint_dir,
+        session_config=session_config
+    )
+
+    net = gan.DAGANEstimator(
+        params=params,
+        model_dir=checkpoint_dir,
+        config=conf,
+    )
+    input_fn = gan.test_fn(params)
+    predictions = net.predict(input_fn)
+    num_generations = params['num_generations']
+    h = []
+    images = []
+    for p in predictions:
+        p = (p + 1) / 2 * 255
+        p = np.uint8(np.clip(p,0,255))
+        h = h.append(p)
+        if len(h) == num_generations:
+            images.append(tf.concat(h, axis=1))
+            h = []
+        if len(images==num_generations):
+            break
+    images = tf.concat(images, axis=0)
+    im = PIL.Image.fromarray(images)
+    im.save(checkpoint_dir+'/result.png')
+    with io.BytesIO() as output:
+        im.save(output,format='PNG')
+        contents = output.getvalue()
+        rpt = '<html><img src="data:image/png;base64,{}"/></html>'.format(base64.b64encode(contents).decode())
+        mlboard.update_task_info({'#documents.result.html':rpt})
+
 
 def train(mode, checkpoint_dir, params):
     logging.info("start build  model")
@@ -234,12 +289,17 @@ def main():
         'use_wide_connections': args.use_wide_connections,
         'limit_train': args.limit_train,
         'attr_definition_file': args.attr_definition_file,
+        'num_generations': args.num_generations,
+        'test_image': args.test_image,
     }
 
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
 
-    train(mode, checkpoint_dir, params)
+    if args.test:
+        test(checkpoint_dir,params)
+    else:
+        train(mode, checkpoint_dir, params)
 
 
 if __name__ == '__main__':
