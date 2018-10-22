@@ -42,7 +42,7 @@ def postprocess(outputs,**kwargs):
         outputs = v[0]
         LOG.info('Use {} as output,{}'.format(k,v.shape))
         break
-    outputs = np.transpose(outputs, (1,2,0))
+    outputs = np.transpose(outputs, (0,2,3,1))
     outputs = (outputs + 1) / 2 * 255
     outputs = np.uint8(np.clip(outputs, 0, 255.0))
     h = []
