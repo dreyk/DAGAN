@@ -12,8 +12,8 @@ import io
 import base64
 from mlboardclient.api import client
 
-
 mlboard = client.Client()
+
 
 def parse_args():
     conf_parser = argparse.ArgumentParser(
@@ -107,7 +107,6 @@ def parse_args():
         help='use_wide_connections',
     )
 
-
     parser.add_argument(
         '--epoch',
         type=int,
@@ -159,12 +158,15 @@ def parse_args():
     group.set_defaults(worker=False)
     group.set_defaults(evaluator=False)
     group.set_defaults(test=False)
+    group.set_defaults(export=False)
     group.add_argument('--worker', dest='worker', action='store_true',
                        help='Start in Worker(training) mode.')
     group.add_argument('--evaluator', dest='evaluator', action='store_true',
                        help='Start in evaluation mode')
     group.add_argument('--test', dest='test', action='store_true',
                        help='Test mode')
+    group.add_argument('--export', dest='export', action='store_true',
+                       help='Export mode')
     p_file = os.path.join(checkpoint_dir, 'parameters.ini')
     if tf.gfile.Exists(p_file):
         parameters = configparser.ConfigParser(allow_no_value=True)
@@ -175,6 +177,35 @@ def parse_args():
     print(args)
     print('\n*************************\n')
     return checkpoint_dir, args
+
+
+def export(checkpoint_dir, params):
+    logging.info("start export  model")
+
+    session_config = None
+
+    conf = tf.estimator.RunConfig(
+        model_dir=checkpoint_dir,
+        session_config=session_config
+    )
+
+    net = gan.DAGANEstimator(
+        params=params,
+        model_dir=checkpoint_dir,
+        config=conf,
+    )
+    feature_placeholders = {
+        'i': tf.placeholder(tf.float32, [-1, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+                            name='i'),
+        'j': tf.placeholder(tf.float32, [-1, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+                            name='j'),
+        'z': tf.placeholder(tf.float32, [-1, params['z_dim']],
+                            name='z'),
+    }
+    receiver = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_placeholders)
+    export_path = net.export_savedmodel(checkpoint_dir, receiver)
+    export_path = export_path.decode("utf-8")
+    client.update_task_info({'model_path': export_path})
 
 
 def test(checkpoint_dir, params):
@@ -199,7 +230,7 @@ def test(checkpoint_dir, params):
     images = []
     for p in predictions:
         p = (p + 1) / 2 * 255
-        p = np.uint8(np.clip(p,0,255))
+        p = np.uint8(np.clip(p, 0, 255))
         h.append(p)
         if len(h) == num_generations:
             images.append(np.concatenate(h, axis=1))
@@ -208,12 +239,12 @@ def test(checkpoint_dir, params):
             break
     images = np.concatenate(images, axis=0)
     im = PIL.Image.fromarray(images)
-    im.save(checkpoint_dir+'/result.png')
+    im.save(checkpoint_dir + '/result.png')
     with io.BytesIO() as output:
-        im.save(output,format='PNG')
+        im.save(output, format='PNG')
         contents = output.getvalue()
         rpt = '<html><img src="data:image/png;base64,{}"/></html>'.format(base64.b64encode(contents).decode())
-        mlboard.update_task_info({'#documents.result.html':rpt})
+        mlboard.update_task_info({'#documents.result.html': rpt})
 
 
 def train(mode, checkpoint_dir, params):
@@ -256,7 +287,7 @@ def main():
     logging.info('------------------')
     if args.worker:
         mode = 'train'
-    elif args.test:
+    elif args.test or args.export:
         mode = 'test'
     else:
         mode = 'eval'
@@ -295,9 +326,10 @@ def main():
 
     if not tf.gfile.Exists(checkpoint_dir):
         tf.gfile.MakeDirs(checkpoint_dir)
-
-    if args.test:
-        test(checkpoint_dir,params)
+    if args.export:
+        export(checkpoint_dir, params)
+    elif args.test:
+        test(checkpoint_dir, params)
     else:
         train(mode, checkpoint_dir, params)
 

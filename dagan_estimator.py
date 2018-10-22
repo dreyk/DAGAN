@@ -158,6 +158,10 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
         train_op = training_util._increment_global_step(1)  # pylint: disable=protected-access
     else:
         _, generated = dagan.sample_same_images()
+        output = tf.identity(generated,name='output')
+        export_outputs = {
+            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: tf.estimator.export.PredictOutput(
+                output)}
         total_loss = None
         train_op = None
         train_hooks = None
@@ -167,6 +171,7 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
         loss=total_loss,
         predictions=generated,
         training_hooks=train_hooks,
+        export_outputs=export_outputs,
         train_op=train_op)
 
 
