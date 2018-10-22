@@ -31,10 +31,10 @@ def preprocess(inputs,**kwargs):
     image = np.transpose(image, (2,0,1))
     image = np.reshape(image, (1,image.shape[0],image.shape[1], image.shape[2]))
     image = np.repeat(image, 32, axis=0)
-    z_vectors = utils.interpolations.create_mine_grid(rows=4, cols=8,
+    z_vectors = utils.interpolations.create_mine_grid(rows=64, cols=64,
                                                       dim=100, space=3, anchors=None,
                                                       spherical=True, gaussian=True)
-    return {'i': image,'z': z_vectors}
+    return {'i': image,'z': z_vectors[0:32]}
 
 @log
 def postprocess(outputs,**kwargs):
