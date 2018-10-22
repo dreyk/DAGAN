@@ -195,11 +195,11 @@ def export(checkpoint_dir, params):
         config=conf,
     )
     feature_placeholders = {
-        'i': tf.placeholder(tf.float32, [-1, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+        'i': tf.placeholder(tf.float32, [None, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
                             name='i'),
-        'j': tf.placeholder(tf.float32, [-1, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+        'j': tf.placeholder(tf.float32, [None, gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
                             name='j'),
-        'z': tf.placeholder(tf.float32, [-1, params['z_dim']],
+        'z': tf.placeholder(tf.float32, [None, params['z_dim']],
                             name='z'),
     }
     receiver = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_placeholders)
