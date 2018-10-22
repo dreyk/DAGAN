@@ -129,15 +129,19 @@ def _encoder_model_fn(features, labels, mode, params=None, config=None):
     discr_inner_layers = [discr_depth_per_layer, discr_depth_per_layer, discr_depth_per_layer,
                           discr_depth_per_layer]
     generator_layer_padding = ["SAME", "SAME", "SAME", "SAME"]
-
-    dagan = DAGAN(batch_size=params['batch_size'], input_x_i=features['i'], input_x_j=features['j'],
+    a = features['i']
+    z = features['z']
+    b = None
+    if (mode == tf.estimator.ModeKeys.TRAIN):
+        b = features['j']
+    dagan = DAGAN(batch_size=params['batch_size'], input_x_i=a, input_x_j=b,
                   dropout_rate=params['dropout_rate'], generator_layer_sizes=generator_layers,
-                  generator_layer_padding=generator_layer_padding, num_channels=features['i'].shape[3],
+                  generator_layer_padding=generator_layer_padding, num_channels=a.shape[3],
                   is_training=(mode == tf.estimator.ModeKeys.TRAIN),
                   augment=tf.constant(params['random_rotate'], dtype=tf.bool),
                   discriminator_layer_sizes=discriminator_layers,
                   discr_inner_conv=discr_inner_layers,
-                  gen_inner_conv=gen_inner_layers, z_dim=params['z_dim'], z_inputs=features['z'],
+                  gen_inner_conv=gen_inner_layers, z_dim=params['z_dim'], z_inputs=z,
                   use_wide_connections=params['use_wide_connections'])
 
     if (mode == tf.estimator.ModeKeys.TRAIN):
