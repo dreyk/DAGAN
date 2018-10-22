@@ -39,7 +39,7 @@ def preprocess(inputs,**kwargs):
 @log
 def postprocess(outputs,**kwargs):
     for k,v in outputs.items():
-        outputs = v[0]
+        outputs = v
         LOG.info('Use {} as output,{}'.format(k,v.shape))
         break
     outputs = np.transpose(outputs, (0,2,3,1))
