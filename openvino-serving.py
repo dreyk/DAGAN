@@ -47,7 +47,7 @@ def postprocess(outputs,**kwargs):
     outputs = np.uint8(np.clip(outputs, 0, 255.0))
     h = []
     images = []
-    for i in len(outputs):
+    for i in range(outputs.shape[0]):
         h.append(outputs[i])
         if len(h) == 8:
             images.append(np.concatenate(h, axis=1))
