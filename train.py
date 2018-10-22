@@ -273,6 +273,12 @@ def test(checkpoint_dir, params):
         model_dir=checkpoint_dir,
         config=conf,
     )
+    feature_placeholders = {
+        'i': tf.placeholder(tf.float32, [params['batch_size'], gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+                            name='i'),
+        'z': tf.placeholder(tf.float32, [params['batch_size'], params['z_dim']],
+                            name='z'),
+    }
     input_fn = gan.test_fn(params)
     predictions = net.predict(input_fn)
     num_generations = params['num_generations']
@@ -295,12 +301,6 @@ def test(checkpoint_dir, params):
         contents = output.getvalue()
         rpt = '<html><img src="data:image/png;base64,{}"/></html>'.format(base64.b64encode(contents).decode())
         mlboard.update_task_info({'#documents.result.html': rpt})
-    feature_placeholders = {
-        'i': tf.placeholder(tf.float32, [params['batch_size'], gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
-                            name='i'),
-        'z': tf.placeholder(tf.float32, [params['batch_size'], params['z_dim']],
-                            name='z'),
-    }
     receiver = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_placeholders)
     export_path = net.export_savedmodel(checkpoint_dir, receiver)
     export_path = export_path.decode("utf-8")
