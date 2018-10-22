@@ -205,6 +205,58 @@ def export(checkpoint_dir, params):
     export_path = export_path.decode("utf-8")
     client.update_task_info({'model_path': export_path})
 
+def make_openvino(exported_path,params):
+    app = mlboard.apps.get()
+    task = app.tasks.get('openvino')
+    task.resource('worker')['workdir'] = exported_path
+    task.resource('worker')['command'] = 'mo_tf.py'
+    task.resource('worker')['args'] = {
+        'input_model': 'frozen.pb',
+        'input': 'i,z',
+        'input_shape': '[{},{},{},3],[{},{}]'.format(params['batch_size'],gan.IMAGE_SIZE[0],gan.IMAGE_SIZE[1],params['batch_size'],params['z_dim']),
+    }
+    task.start(comment='Convert to OpenVino')
+    completed = task.wait()
+    if completed.status != 'Succeeded':
+        logging.warning(
+            "Task %s-%s completed with status %s."
+            % (completed.name, completed.build, completed.status)
+        )
+        logging.warning(
+            'Please take a look at the corresponding task logs'
+            ' for more information about failure.'
+        )
+        logging.warning("Workflow completed with status ERROR")
+        sys.exit(1)
+
+    client.update_task_info({'openvino_model': os.path.join(exported_path, 'frozen.xml')})
+    logging.info(
+        "Task %s-%s completed with status %s."
+        % (completed.name, completed.build, completed.status)
+    )
+
+
+def freeze(exported_path,params,do_openvino=True):
+    from tensorflow.python.saved_model import loader
+    from tensorflow.python.saved_model import signature_constants as tf_const
+    sess = tf.Session(graph=tf.Graph())
+    graph = loader.load(sess, [tf.saved_model.tag_constants.SERVING], exported_path)
+    outputs = graph.signature_def.get(tf_const.DEFAULT_SERVING_SIGNATURE_DEF_KEY).outputs
+    toutputs = []
+    for out in list(outputs.values()):
+        name = sess.graph.get_tensor_by_name(out.name).name
+        p = name.split(':')
+        name = p[0] if len(p) > 0 else name
+        toutputs += [name]
+    output_graph_def = tf.graph_util.convert_variables_to_constants(
+        sess, sess.graph.as_graph_def(), toutputs)
+    out_path = os.path.join(exported_path, 'frozen.pb')
+    client.update_task_info({'frozen_graph': out_path})
+    with tf.gfile.GFile(out_path, "wb") as f:
+        f.write(output_graph_def.SerializeToString())
+    if do_openvino:
+        make_openvino(exported_path,params)
+    return out_path
 
 def test(checkpoint_dir, params):
     logging.info("start test  model")
@@ -243,6 +295,18 @@ def test(checkpoint_dir, params):
         contents = output.getvalue()
         rpt = '<html><img src="data:image/png;base64,{}"/></html>'.format(base64.b64encode(contents).decode())
         mlboard.update_task_info({'#documents.result.html': rpt})
+    feature_placeholders = {
+        'i': tf.placeholder(tf.float32, [params['batch_size'], gan.IMAGE_SIZE[0], gan.IMAGE_SIZE[1], 3],
+                            name='i'),
+        'z': tf.placeholder(tf.float32, [params['batch_size'], params['z_dim']],
+                            name='z'),
+    }
+    receiver = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_placeholders)
+    export_path = net.export_savedmodel(checkpoint_dir, receiver)
+    export_path = export_path.decode("utf-8")
+    client.update_task_info({'model_path': export_path})
+    freeze(export_path,params,True)
+
 
 
 def train(mode, checkpoint_dir, params):
