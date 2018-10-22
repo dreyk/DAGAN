@@ -29,7 +29,7 @@ def preprocess(inputs,**kwargs):
     image = np.asarray(image)
     image = image / 127.5 - 1
     image = np.transpose(image, (2,0,1))
-    image = np.reshape(image, (1,image.shape[0],image.shape[1], image.shape[3]))
+    image = np.reshape(image, (1,image.shape[0],image.shape[1], image.shape[2]))
     image = np.repeat(image, 32, axis=0)
     z_vectors = utils.interpolations.create_mine_grid(rows=4, cols=8,
                                                       dim=100, space=3, anchors=None,
